@@ -113,6 +113,9 @@
 #define GPIO_GPPUDCLK0	(GPIO_PERI_BASE + 0x98/4)	
 #define GPIO_GPPUDCLK1	(GPIO_PERI_BASE + 0x9C/4)		
 
+/* BCM2711 GPIO resistors have different mechanics */
+#define GPPUPPDN_BASE	57  // Pins 0-15
+
 /* SPI registers */
 #define SPI_PERI_BASE	base_pointer[3]	// SPI0_BASE
 #define SPI_CS		(SPI_PERI_BASE + 0x00/4) 
@@ -436,6 +439,22 @@ uint32_t clearBit(volatile uint32_t* reg, uint8_t position)
 	result = *reg &= ~mask;
 	__sync_synchronize();
 	return result;
+}
+
+void bcm27xx_setResistor(unsigned int position, uint8_t pull) {
+	int reg = GPPUPPDN_BASE + (position / 16);
+	int lsb = (position % 16) * 2;
+
+	GPIO_PERI_BASE[reg] = (GPIO_PERI_BASE[reg] & ~(3 << lsb)) | (pull << lsb);
+}
+
+void bcm28xx_setResistor(unsigned int position, uint8_t pull) {
+	*GPIO_GPPUD = pull;
+	uswait(150);  	/* required wait times based on bcm2835 manual */
+	setBit(GPIO_GPPUDCLK0, position);
+	uswait(150);	/* required wait times based on bcm2835 manual */
+	*GPIO_GPPUD = 0x0;
+	clearBit(GPIO_GPPUDCLK0, position);
 }
 
 /* Check register bit position value - 0 (OFF state) or 1 (ON state) */  
@@ -766,25 +785,18 @@ void gpio_reset_event(uint8_t pin) {
  * value = 2, 0x2 or 10b, Enable Pull-Up resistor
  */
 void gpio_enable_pud(uint8_t pin, uint8_t value) {
-	if(value == 0){       
-  	*GPIO_GPPUD = 0x0;	// Disable PUD/Pull-UP/Down
-  }
-	else if(value == 1){  
-   	*GPIO_GPPUD = 0x1;	// Enable PD/Pull-Down
-	}
-	else if(value == 2){ 
-  	*GPIO_GPPUD = 0x2;	// Enable PU/Pull-Up
-	}
-  else{
-		printf("%s() error: ", __func__);
-		puts("Invalid pud value.");
-  }
+	if(value == 0 || value == 1 || value == 2) {
+  	    if (peri_base == PERI_BASE_RPI1 || peri_base == PERI_BASE_RPI23) {
+            bcm28xx_setResistor(pin, value);
+        } else {
+            bcm27xx_setResistor(pin, value);
+        }
 
-	uswait(150);  	/* required wait times based on bcm2835 manual */
-	setBit(GPIO_GPPUDCLK0, pin);
-	uswait(150);	/* required wait times based on bcm2835 manual */
-	*GPIO_GPPUD = 0x0;
-	clearBit(GPIO_GPPUDCLK0, pin);
+        return;
+    }
+
+    printf("%s() error: ", __func__);
+    puts("Invalid pud value.");
 }
 
 /*********************************
