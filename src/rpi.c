@@ -164,7 +164,7 @@ volatile uint32_t base_add[BASE_INDEX] = {0};
 volatile uint32_t *base_pointer[BASE_INDEX] = {0};
 
 /* Temporary dynamic core_clock frequency container (RPi 1 & 2 = 250 MHz, RPi 3 & 4 = 400 MHz) */
-uint32_t core_clock_freq = 250000000;  // Initial value is 250 MHz
+uint32_t core_clock_freq = CORE_CLOCK_FREQ_BCM2835;  // Initial value is 250 MHz
 
 /**********************************
 
