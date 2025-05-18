@@ -171,51 +171,46 @@ uint32_t core_clock_freq = 250000000;  // Initial value is 250 MHz
 /* Get device RPI model and set peripheral base address accordingly */
 void set_peri_base_address(uint8_t pwm_option, uint8_t spi_option, uint8_t i2c_option){
 	FILE *fp;
-	char info[INFO_SIZE];
-	
-	fp = fopen("/proc/cpuinfo", "r");
-	
-	if (fp == NULL) {
-		fputs ("reading file /proc/cpuinfo error", stderr);
-		exit (1);
-	}
-	
-	/* Get 'Model' info */
-	while (fgets (info, INFO_SIZE, fp) != NULL){
-		if (strncmp (info, "Model", 5) == 0)
-      break;
-	}
-	//printf("%s", info);
 
-  if(strstr(info, "Pi Zero")||strstr(info, "Pi 1")){
-		//puts("Pi zero/Pi 1");
-	 	peri_base = PERI_BASE_RPI1;
-  }
-	else if(strstr(info, "Pi Zero 2")||strstr(info, "Pi 3")){
-		//puts("Pi Zero 2/Pi 3");
-  	peri_base = PERI_BASE_RPI23;
-   	core_clock_freq = CORE_CLOCK_FREQ_RPI23; 
-  }
-	else if(strstr(info, "Pi Compute Module 3")){
-		//puts("Pi Compute Module 3 Model");
-  	peri_base = PERI_BASE_RPI23;
-		core_clock_freq = CORE_CLOCK_FREQ_RPI23;
-  }
-	else if(strstr(info, "Pi 4")||strstr(info, "Pi Compute Module 4")){
-		//puts("Pi 4 Model B/Pi Compute Module 4");
-  	peri_base = PERI_BASE_RPI4;
-   	core_clock_freq = CORE_CLOCK_FREQ_RPI4; 
-  }
-	else if(strstr(info, "Pi 400")){
-		//puts("Pi 400 Model");
-  	peri_base = PERI_BASE_RPI4;
-   	core_clock_freq = CORE_CLOCK_FREQ_RPI4; 
-  }
-	else{
-		//puts("Other Rpi Model");			
-		peri_base = PERI_BASE_RPI4;
-   	core_clock_freq = CORE_CLOCK_FREQ_RPI4; 
-  }
+	fp = fopen("/proc/device-tree/system/linux,revision", "rb");
+
+	uint8_t revision[4] = { 0 };
+	uint32_t cpu = 0;
+
+	if (fp == NULL) {
+		fputs("Reading system revision code error", stderr);
+		cpu = -1;
+	} else {
+		if (fread(revision, 1, sizeof(revision), fp) == 4) {
+			cpu = (revision[2] >> 4) & 0xf;
+		} else {
+			printf("Revision data too short\n");
+		}
+
+		fclose(fp);
+	}
+
+	switch (cpu) {
+		case 0: /* BCM2835 */
+			peri_base = PERI_BASE_RPI1;
+			break;
+		case 1: /* BCM2836 */
+		case 2: /* BCM2837 */
+			peri_base = PERI_BASE_RPI23;
+			core_clock_freq = CORE_CLOCK_FREQ_RPI23;
+			break;
+		case 3: /* BCM2711 */
+			peri_base = PERI_BASE_RPI4;
+			core_clock_freq = CORE_CLOCK_FREQ_RPI4;
+			break;
+		case 4: /* BCM2712 */
+			// Can be used to add Raspberry Pi 5 support
+			// Ranges are not compatible with BCM2711
+			break;
+		default:
+			peri_base = PERI_BASE_RPI4;
+			core_clock_freq = CORE_CLOCK_FREQ_RPI4;
+	}
 	
 	/* Verify ST_BASE, its new value should be other than 0x3000
 	 * otherwise its peripheral base address was not correctly initialized
@@ -268,8 +263,6 @@ void set_peri_base_address(uint8_t pwm_option, uint8_t spi_option, uint8_t i2c_o
 	else if(i2c_option == 1){
 		base_add[5] = BSC1_BASE;
 	}
-	  
-  fclose(fp);
 }
 
 void start_mmap(int access){
