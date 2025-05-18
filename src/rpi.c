@@ -27,9 +27,9 @@
 // https://www.raspberrypi.com/documentation/computers/processors.html
 
 /* Peripherals base addresses for different Rpi models */
-#define	PERI_BASE_RPI1  	0x20000000 // Rpi 1
-#define	PERI_BASE_RPI23 	0x3F000000 // Rpi 2 & 3
-#define	PERI_BASE_RPI4		0xFE000000 // Rpi 4
+#define	PERI_BASE_BCM2835  	0x20000000 // Rpi 1
+#define	PERI_BASE_BCM2836 	0x3F000000 // Rpi 2 & 3
+#define	PERI_BASE_BCM2711 	0xFE000000 // Rpi 4
 
 /* Common core clock frequency for all RPI models */
 #define CORE_CLK_FREQ		250000000 // 250 MHz 
@@ -37,9 +37,9 @@
 /* Dynamic CORE_CLOCK_FREQ for different models
  * that can affect UART, SPI and I2C performance
  */
-#define	CORE_CLOCK_FREQ_RPI1	250000000 // 250 MHz 
-#define	CORE_CLOCK_FREQ_RPI23	400000000 // 400 MHz
-#define	CORE_CLOCK_FREQ_RPI4	400000000 // 400 MHz 
+#define	CORE_CLOCK_FREQ_BCM2835	250000000 // 250 MHz, Rpi 1
+#define	CORE_CLOCK_FREQ_BCM2836	400000000 // 400 MHz, Rpi 2 & 3
+#define	CORE_CLOCK_FREQ_BCM2711	400000000 // 400 MHz, Rpi 4
 
 /* Base address of each peripheral registers
  * with a dynamic peri_base offset value
@@ -114,7 +114,7 @@
 #define GPIO_GPPUDCLK1	(GPIO_PERI_BASE + 0x9C/4)		
 
 /* BCM2711 GPIO resistors have different mechanics */
-#define GPPUPPDN_BASE	57  // Pins 0-15
+#define GPPUPPDN_BASE	57
 
 /* SPI registers */
 #define SPI_PERI_BASE	base_pointer[3]	// SPI0_BASE
@@ -193,26 +193,27 @@ void set_peri_base_address(uint8_t pwm_option, uint8_t spi_option, uint8_t i2c_o
 		fclose(fp);
 	}
 
+
 	switch (cpu) {
 		case 0: /* BCM2835 */
-			peri_base = PERI_BASE_RPI1;
+			peri_base = PERI_BASE_BCM2835;
 			break;
 		case 1: /* BCM2836 */
 		case 2: /* BCM2837 */
-			peri_base = PERI_BASE_RPI23;
-			core_clock_freq = CORE_CLOCK_FREQ_RPI23;
+			peri_base = PERI_BASE_BCM2836;
+			core_clock_freq = CORE_CLOCK_FREQ_BCM2836;
 			break;
 		case 3: /* BCM2711 */
-			peri_base = PERI_BASE_RPI4;
-			core_clock_freq = CORE_CLOCK_FREQ_RPI4;
+			peri_base = PERI_BASE_BCM2711;
+			core_clock_freq = CORE_CLOCK_FREQ_BCM2711;
 			break;
 		case 4: /* BCM2712 */
 			// Can be used to add Raspberry Pi 5 support
 			// Ranges are not compatible with BCM2711
 			break;
 		default:
-			peri_base = PERI_BASE_RPI4;
-			core_clock_freq = CORE_CLOCK_FREQ_RPI4;
+			peri_base = PERI_BASE_BCM2711;
+			core_clock_freq = CORE_CLOCK_FREQ_BCM2711;
 	}
 	
 	/* Verify ST_BASE, its new value should be other than 0x3000
@@ -786,7 +787,7 @@ void gpio_reset_event(uint8_t pin) {
  */
 void gpio_enable_pud(uint8_t pin, uint8_t value) {
 	if(value == 0 || value == 1 || value == 2) {
-  	    if (peri_base == PERI_BASE_RPI1 || peri_base == PERI_BASE_RPI23) {
+  	    if (peri_base == PERI_BASE_BCM2835 || peri_base == PERI_BASE_BCM2836) {
             bcm28xx_setResistor(pin, value);
         } else {
             bcm27xx_setResistor(pin, value);
