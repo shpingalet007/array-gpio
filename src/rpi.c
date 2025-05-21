@@ -448,21 +448,37 @@ uint32_t clearBit(volatile uint32_t* reg, uint8_t position)
 	return result;
 }
 
-void bcm2711_set_pud(uint8_t position, uint8_t pull) {
+uint8_t bcm2711_set_pud(uint8_t position, uint8_t pull) {
 	volatile uint32_t *reg = GPIO_GPPUPPDN0 + (position / 16);
 	int lsb = (position % 16) * 2;
 	uint32_t mask = 3 << lsb;
 	uint32_t value = ((3 - pull) % 3) << lsb;
 	*reg = (*reg & ~mask) | value;
+
+	return (*reg >> lsb) & 3;
 }
 
-void bcm2835_set_pud(uint8_t position, uint8_t pull) {
+int bcm2711_get_pud(uint8_t position) {
+	volatile uint32_t *reg = GPIO_GPPUPPDN0 + (position / 16);
+	int lsb = (position % 16) * 2;
+	uint32_t encoded = (*reg >> lsb) & 0x3;
+
+	if (encoded > 2) {
+		return -1;
+	}
+
+	return (3 - encoded) % 3;
+}
+
+uint8_t bcm2835_set_pud(uint8_t position, uint8_t pull) {
 	*GPIO_GPPUD = pull;
 	uswait(150);  	/* required wait times based on bcm2835 manual */
 	setBit(GPIO_GPPUDCLK0, position);
 	uswait(150);	/* required wait times based on bcm2835 manual */
 	*GPIO_GPPUD = 0x0;
 	clearBit(GPIO_GPPUDCLK0, position);
+
+	return pull;
 }
 
 /* Check register bit position value - 0 (OFF state) or 1 (ON state) */  
@@ -792,7 +808,7 @@ void gpio_reset_event(uint8_t pin) {
  * value = 1, 0x1 or 01b, Enable Pull-Down resistor
  * value = 2, 0x2 or 10b, Enable Pull-Up resistor
  */
-void gpio_enable_pud(uint8_t pin, uint8_t value) {
+uint8_t gpio_enable_pud(uint8_t pin, uint8_t value) {
 	bool val_correct = value == 0 || value == 1 || value == 2;
 
 	if(!val_correct) {
@@ -802,12 +818,18 @@ void gpio_enable_pud(uint8_t pin, uint8_t value) {
 	}
 
 	if (peri_base == PERI_BASE_RPI1 || peri_base == PERI_BASE_RPI23) {
-		bcm2835_set_pud(pin, value);
-	} else {
-		bcm2711_set_pud(pin, value);
+		return bcm2835_set_pud(pin, value);
 	}
 
-	return;
+	return bcm2711_set_pud(pin, value);
+}
+
+uint8_t gpio_read_pud(uint8_t pin) {
+	if (peri_base == PERI_BASE_RPI4) {
+		return bcm2711_get_pud(pin);
+	} else {
+		return -1;
+	}
 }
 
 /*********************************
