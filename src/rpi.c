@@ -461,11 +461,7 @@ uint8_t bcm2711_set_pud(uint8_t position, uint8_t pull) {
 int bcm2711_get_pud(uint8_t position) {
 	volatile uint32_t *reg = GPIO_GPPUPPDN0 + (position / 16);
 	int lsb = (position % 16) * 2;
-	uint32_t encoded = (*reg >> lsb) & 0x3;
-
-	if (encoded > 2) {
-		return -1;
-	}
+	uint32_t encoded = (*reg >> lsb) & 3;
 
 	return (3 - encoded) % 3;
 }
@@ -814,7 +810,7 @@ uint8_t gpio_enable_pud(uint8_t pin, uint8_t value) {
 	if(!val_correct) {
 		printf("%s() error: ", __func__);
 		puts("Invalid pud value.");
-		return;
+		return -1;
 	}
 
 	if (peri_base == PERI_BASE_RPI1 || peri_base == PERI_BASE_RPI23) {

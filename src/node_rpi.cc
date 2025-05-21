@@ -206,6 +206,20 @@ NAN_METHOD(gpio_enable_pud)
 	gpio_enable_pud(arg1, arg2);
 }
 
+NAN_METHOD(gpio_read_pud) {
+	uint8_t rval;
+
+	if ((info.Length() != 1) || (!info[0]->IsNumber())) {
+		Nan::ThrowTypeError("gpio_read_pud expects 1 numeric argument");
+		return;
+	}
+
+	uint8_t pin = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+	rval = gpio_read_pud(pin);
+
+	info.GetReturnValue().Set(Nan::New<v8::Uint32>(rval));
+}
+
 /*
  *  PWM
  */
@@ -544,6 +558,7 @@ NAN_MODULE_INIT(setup)
 	NAN_EXPORT(target, gpio_reset_event);
 	NAN_EXPORT(target, gpio_write);
 	NAN_EXPORT(target, gpio_enable_pud);
+	NAN_EXPORT(target, gpio_read_pud);
 
 	/* pwm */
 	NAN_EXPORT(target, pwm_set_pin);

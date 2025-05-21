@@ -69,7 +69,9 @@ uint8_t gpio_detect_input_event(uint8_t pin);
 
 void gpio_reset_event(uint8_t pin);
 
-void gpio_enable_pud(uint8_t pin, uint8_t value);
+uint8_t gpio_enable_pud(uint8_t pin, uint8_t value);
+
+uint8_t gpio_read_pud(uint8_t pin);
 
 /**
  *  PWM
